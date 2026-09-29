@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TTS Studio — Clean Text → Downloadable Speech</title>
+<style>
+  :root{
+    --bg:#070b18; --panel:#0e1630; --panel2:#0a1128; --line:#1e2c52;
+    --text:#e9eeff; --muted:#8b9ccb; --accent:#5b8cff; --accent2:#8b5cf6;
+    --ok:#22c98a; --err:#ff5c7a; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(900px 520px at 10% -10%,#1b2a5e 0,transparent 62%),
+               radial-gradient(820px 520px at 95% 0,#3a1d63 0,transparent 58%),var(--bg);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1400px;margin:0 auto;padding:26px 20px 60px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .logo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 24px rgba(91,140,255,.35)}
+  h1{font-size:20px;margin:0}
+  header p{margin:3px 0 0;font-size:13px;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+  .full{grid-column:1/-1}
+  .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)),var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);
+    margin:0 0 12px;display:flex;align-items:center;gap:8px;font-weight:700}
+  .panel h2 .num{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;
+    background:rgba(91,140,255,.16);color:var(--accent);border:1px solid rgba(91,140,255,.35)}
+  textarea{width:100%;min-height:290px;resize:vertical;padding:13px 14px;border-radius:11px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--text);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;line-height:1.65;
+    outline:none;transition:border-color .15s,box-shadow .15s}
+  textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,140,255,.15)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  button{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border-radius:10px;padding:10px 15px;
+    border:1px solid var(--line);background:#16203f;color:var(--text);
+    transition:transform .08s,background .15s,border-color .15s,opacity .15s}
+  button:hover:not(:disabled){background:#1c2950;border-color:#2f4380}
+  button:active:not(:disabled){transform:translateY(1px)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;
+    box-shadow:0 8px 22px rgba(91,140,255,.32)}
+  button.primary:hover:not(:disabled){filter:brightness(1.08)}
+  button.ok{background:linear-gradient(135deg,#16a374,#22c98a);border-color:transparent;color:#04150f}
+  button.ghost{background:transparent}
+  button.sm{padding:7px 11px;font-size:12.5px}
+  label.field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);font-weight:600}
+  select,input[type=text]{font:inherit;font-size:13.5px;padding:10px 11px;border-radius:10px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--text);outline:none;width:100%}
+  select:focus,input[type=text]:focus{border-color:var(--accent)}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+  .slider{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);font-weight:600}
+  .slider .val{color:var(--accent);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px 16px;margin-top:14px}
+  .opt{display:flex;align-items:center;gap:9px;font-size:13px;color:#c7d3f2;cursor:pointer;user-select:none}
+  .opt input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+  .stats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .stats b{color:var(--text);font-variant-numeric:tabular-nums}
+  .status{margin-top:12px;font-size:13px;padding:10px 13px;border-radius:10px;display:none;
+    border:1px solid var(--line);background:var(--panel2);line-height:1.55}
+  .status.show{display:block}
+  .status.err{border-color:rgba(255,92,122,.5);color:#ffc2cd;background:rgba(255,92,122,.08)}
+  .status.ok{border-color:rgba(34,201,138,.45);color:#b6f5dd;background:rgba(34,201,138,.08)}
+  .status.warn{border-color:rgba(255,176,32,.45);color:#ffe2ab;background:rgba(255,176,32,.08)}
+  .bar{height:6px;border-radius:99px;background:#1a2444;overflow:hidden;margin-top:10px;display:none}
+  .bar.show{display:block}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .25s}
+  audio{width:100%;margin-top:12px;border-radius:10px;display:none}
+  audio.show{display:block}
+  .hidden{display:none !important}
+  .hint{font-size:12px;color:var(--muted);line-height:1.65;margin-top:10px}
+  .pill{font-size:11px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);
+    color:var(--muted);background:rgba(255,255,255,.03)}
+  .pill.good{border-color:rgba(34,201,138,.4);color:#8ef0c9}
+  .divider{height:1px;background:var(--line);margin:16px 0}
+  code{background:#0a1128;padding:1px 5px;border-radius:5px;font-size:12px;color:#a9c0ff}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}textarea{min-height:200px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">🔊</div>
+    <div>
+      <h1>TTS Studio</h1>
+      <p>Clean, punctuation-perfect text → speech you can download. No server, no API key.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- 1. INPUT -->
+    <section class="panel">
+      <h2><span class="num">1</span> Raw text</h2>
+      <textarea id="rawText" placeholder="Paste anything here — an article, notes, a script, a messy draft…
+
+Try:  Dr. Smith bought 3.5 kg of apples for $12.99 on 12/25/2024 — approx. 45% cheaper than Mr. Jones' store (U.S.A. prices, 10-20% tax)..."></textarea>
+
+      <div class="row">
+        <button class="sm ghost" id="loadFile">📄 Load .txt</button>
+        <button class="sm ghost" id="sampleBtn">✨ Messy sample</button>
+        <button class="sm ghost" id="clearBtn">Clear</button>
+        <input type="file" id="fileInput" accept=".txt,.md,text/plain" class="hidden" />
+      </div>
+
+      <div class="opts">
+        <label class="opt"><input type="checkbox" id="oMd" checked> Strip Markdown / HTML</label>
+        <label class="opt"><input type="checkbox" id="oAbbr" checked> Expand abbreviations</label>
+        <label class="opt"><input type="checkbox" id="oNum" checked> Numbers → words</label>
+        <label class="opt"><input type="checkbox" id="oUnit" checked> Units &amp; symbols → words</label>
+        <label class="opt"><input type="checkbox" id="oPunct" checked> Fix punctuation spacing</label>
+        <label class="opt"><input type="checkbox" id="oSmooth" checked> Commas in long sentences</label>
+        <label class="opt"><input type="checkbox" id="oAcr" checked> U.S.A. → "U S A"</label>
+        <label class="opt"><input type="checkbox" id="oEmoji" checked> Remove emoji / icons</label>
+      </div>
+
+      <div class="row">
+        <button class="primary" id="cleanBtn">🪄 Clean &amp; format for TTS</button>
+      </div>
+    </section>
+
+    <!-- 2. OUTPUT -->
+    <section class="panel">
+      <h2><span class="num">2</span> TTS-ready script <span class="pill" id="readyPill">waiting</span></h2>
+      <textarea id="cleanText" placeholder="Your cleaned, speech-ready text appears here. You can still edit it by hand."></textarea>
+      <div class="stats">
+        <span>Characters <b id="sChars">0</b></span>
+        <span>Words <b id="sWords">0</b></span>
+        <span>Sentences <b id="sSent">0</b></span>
+        <span>Est. duration <b id="sDur">0:00</b></span>
+      </div>
+      <div class="row">
+        <button class="sm ghost" id="copyBtn">📋 Copy cleaned text</button>
+        <button class="sm ghost" id="downloadTxt">⬇️ Download .txt</button>
+      </div>
+      <p class="hint">Adds terminal punctuation to every line, normalises spacing around commas and periods, spells out numbers, and expands abbreviations — the things that make cheap TTS sound broken.</p>
+    </section>
+
+    <!-- 3. SPEECH -->
+    <section class="panel full">
+      <h2><span class="num">3</span> Generate speech</h2>
+
+      <div class="controls">
+        <label class="field">Engine
+          <select id="engine">
+            <option value="cloud">☁️ Cloud MP3 — downloadable file</option>
+            <option value="browser">💻 Browser voice — instant, offline</option>
+          </select>
+        </label>
+
+        <label class="field" id="cloudVoiceWrap">Cloud voice
+          <select id="cloudVoice"></select>
+        </label>
+
+        <label class="field hidden" id="browserVoiceWrap">Browser voice
+          <select id="browserVoice"></select>
+        </label>
+
+        <label class="field">File name
+          <input type="text" id="fname" value="speech" />
+        </label>
+      </div>
+
+      <div class="controls" id="browserTuning" style="margin-top:14px;display:none">
+        <div class="slider">Rate <span class="val" id="vRate">1.00</span>
+          <input type="range" id="rate" min="0.5" max="2" step="0.05" value="1" />
+        </div>
+        <div class="slider">Pitch <span class="val" id="vPitch">1.00</span>
+          <input type="range" id="pitch" min="0" max="2" step="0.05" value="1" />
+        </div>
+        <div class="slider">Volume <span class="val" id="vVol">1.00</span>
+          <input type="range" id="vol" min="0" max="1" step="0.05" value="1" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <button class="primary" id="genBtn">🎧 Generate speech</button>
+        <button class="ghost hidden" id="playBtn">▶️ Play</button>
+        <button class="ghost hidden" id="pauseBtn">⏸ Pause</button>
+        <button class="ghost hidden" id="stopBtn">⏹ Stop</button>
+        <button class="ok hidden" id="dlBtn">⬇️ Download MP3</button>
+        <button class="ghost hidden" id="recBtn">🎙 Record to file (Chrome)</button>
+      </div>
+
+      <div class="bar" id="bar"><i id="barFill"></i></div>
+      <div class="status" id="status"></div>
+      <audio id="player" controls preload="metadata"></audio>
+
+      <p class="hint" id="engineHint"></p>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+/* ============================================================
+   PART 1 — NUMBER / WORD TABLES
+   ============================================================ */
+const ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+const SCALES = ['','thousand','million','billion','trillion','quadrillion'];
+const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+const ORD_SPECIAL = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',
+  8:'eighth',9:'ninth',10:'tenth',11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',
+  15:'fifteenth',16:'sixteenth',17:'seventeenth',18:'eighteenth',19:'nineteenth',20:'twentieth',
+  30:'thirtieth',40:'fortieth',50:'fiftieth',60:'sixtieth',70:'seventieth',80:'eightieth',90:'ninetieth'};
+
+function under100(n){
+  if (n < 20) return ONES[n];
+  const t = Math.floor(n/10), o = n%10;
+  return o ? TENS[t] + '-' + ONES[o] : TENS[t];
+}
+function under1000(n){
+  const out = [];
+  const h = Math.floor(n/100), r = n%100;
+  if (h) out.push(ONES[h] + ' hundred');
+  if (r) out.push(under100(r));
+  return out.join(' ');
+}
+function intToWords(num){
+  num = Math.floor(Math.abs(num));
+  if (num === 0) return 'zero';
+  const groups = []; let n = num, i = 0;
+  while (n > 0){
+    const chunk = n % 1000;
+    if (chunk) groups.unshift(under1000(chunk) + (SCALES[i] ? ' ' + SCALES[i] : ''));
+    n = Math.floor(n/1000); i++;
+  }
+  return groups.join(' ');
+}
+function digitsToWords(str){
+  str = String(str).replace(/,/g,'');
+  const neg = str.trim().startsWith('-');
+  if (neg) str = str.trim().slice(1);
+  const parts = str.split('.');
+  let out = intToWords(parts[0] === '' ? 0 : parseInt(parts[0],10));
+  if (parts[1]) out += ' point ' + parts[1].split('').map(d => ONES[+d] || 'zero').join(' ');
+  return (neg ? 'minus ' : '') + out;
+}
+function ordinalToWords(n){
+  n = Math.floor(n);
+  if (ORD_SPECIAL[n]) return ORD_SPECIAL[n];
+  if (n < 100) return TENS[Math.floor(n/10)*10] + '-' + ORD_SPECIAL[n%10];
+  if (n < 1000){
+    const h = Math.floor(n/100), r = n%100;
+    return ONES[h] + ' hundred' + (r ? ' and ' + ordinalToWords(r) : 'th');
+  }
+  const w = intToWords(n);
+  return /y$/.test(w) ? w.slice(0,-1) + 'ieth' : w + 'th';
+}
+function yearToWords(y){
+  y = Math.floor(y);
+  if (y < 1000) return intToWords(y);
+  const c = Math.floor(y/100), r = y % 100;
+  const cw = c < 20 ? ONES[c] : (TENS[Math.floor(c/10)] + (c%10 ? '-' + ONES[c%10] : ''));
+  if (r === 0) return cw + ' hundred';
+  if (r < 10) return cw + ' oh ' + ONES[r];
+  return cw + ' ' + under100(r);
+}
+
+/* ============================================================
+   PART 2 — THE TEXT CLEANER
+   ============================================================ */
+const ABBR = {
+  'mr.':'Mister','mrs.':'Missus','ms.':'Miz','messrs.':'Messieurs',
+  'dr.':'Doctor','drs.':'Doctors','prof.':'Professor','rev.':'Reverend','hon.':'Honorable',
+  'sr.':'Senior','jr.':'Junior','mt.':'Mount','st.':'Saint',
+  'vs.':'versus','etc.':'et cetera','e.g.':'for example','i.e.':'that is','viz.':'namely',
+  'cf.':'compare','approx.':'approximately','dept.':'department','govt.':'government',
+  'est.':'estimated','max.':'maximum','min.':'minimum','avg.':'average','vol.':'volume',
+  'fig.':'figure','ch.':'chapter','no.':'number','p.':'page','pp.':'pages',
+  'inc.':'incorporated','ltd.':'limited','corp.':'corporation','co.':'company',
+  'bros.':'brothers','assn.':'association','univ.':'university',
+  'a.m.':'A M','p.m.':'P M',
+  'jan.':'January','feb.':'February','mar.':'March','apr.':'April','jun.':'June','jul.':'July',
+  'aug.':'August','sept.':'September','sep.':'September','oct.':'October','nov.':'November','dec.':'December',
+  'mon.':'Monday','tue.':'Tuesday','tues.':'Tuesday','wed.':'Wednesday','thu.':'Thursday',
+  'thur.':'Thursday','thurs.':'Thursday','fri.':'Friday','sat.':'Saturday','sun.':'Sunday'
+};
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ABBR_RE = new RegExp(
+  '(^|[^\\w.])(' + Object.keys(ABBR).sort((a,b)=>b.length-a.length).map(escRe).join('|') +
+  ')(?=$|[\\s,;:!?)\\]}"\'])', 'gi');
+
+const UNITS = [
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:kg|kgs|kilo|kilos)\b/gi, s:'kilogram', p:'kilograms' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:km|kms)\b/gi,           s:'kilometer', p:'kilometers' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:cm)\b/gi,               s:'centimeter', p:'centimeters' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:mm)\b/gi,               s:'millimeter', p:'millimeters' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:ml)\b/gi,               s:'milliliter', p:'milliliters' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:gb)\b/gi,               s:'gigabyte', p:'gigabytes' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:mb)\b/gi,               s:'megabyte', p:'megabytes' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:kb)\b/gi,               s:'kilobyte', p:'kilobytes' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:tb)\b/gi,               s:'terabyte', p:'terabytes' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:mph)\b/gi,              s:'mile per hour', p:'miles per hour' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:km\/h|kph)\b/gi,        s:'kilometer per hour', p:'kilometers per hour' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:ft|feet|foot)\b/gi,     s:'foot', p:'feet' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:lbs?|pounds?)\b/gi,     s:'pound', p:'pounds' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:oz|ounces?)\b/gi,       s:'ounce', p:'ounces' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:hrs?|hours?)\b/gi,      s:'hour', p:'hours' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:mins?|minutes?)\b/gi,   s:'minute', p:'minutes' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:secs?|seconds?)\b/gi,   s:'second', p:'seconds' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:ghz)\b/gi,              s:'gigahertz', p:'gigahertz' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:mhz)\b/gi,              s:'megahertz', p:'megahertz' },
+  { re:/\b(\d[\d,]*(?:\.\d+)?)\s*(?:khz)\b/gi,              s:'kilohertz', p:'kilohertz' }
+];
+
+const FRACTIONS = {
+  '1/2':'one half','1/3':'one third','2/3':'two thirds','1/4':'one quarter','3/4':'three quarters',
+  '1/5':'one fifth','2/5':'two fifths','3/5':'three fifths','4/5':'four fifths',
+  '1/8':'one eighth','3/8':'three eighths','5/8':'five eighths','7/8':'seven eighths',
+  '1/10':'one tenth','1/100':'one hundredth'
+};
+
+function cleanForTTS(raw, o){
+  let t = String(raw);
+
+  /* 0. Unicode normalisation */
+  t = t.normalize('NFKC').replace(/\r\n?/g,'\n');
+  t = t.replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+       .replace(/[\u201C\u201D\u201E\u2033]/g, '"')
+       .replace(/\u2026/g, '. ')
+       .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+       .replace(/[\u200B-\u200D\uFEFF\u2060]/g, '')
+       .replace(/[\u2010-\u2015]/g, '-');
+
+  /* 1. Markdown / HTML */
+  if (o.md){
+    t = t.replace(/```[\s\S]*?```/g, ' ');
+    t = t.replace(/`([^`]*)`/g, '$1');
+    t = t.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+    t = t.replace(/<style[\s\S]*?<\/style>/gi, ' ');
+    t = t.replace(/<[^>]+>/g, ' ');
+    t = t.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
+    t = t.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+    t = t.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+    t = t.replace(/^\s{0,3}>\s?/gm, '');
+    t = t.replace(/^\s{0,3}(?:[-*_]\s*){3,}$/gm, '');
+    t = t.replace(/^\s{0,3}[-*+]\s+/gm, '');
+    t = t.replace(/^\s{0,3}\d+[.)]\s+/gm, '');
+    t = t.replace(/(\*\*|__)(.*?)\1/g, '$2');
+    t = t.replace(/(\*|_)(.*?)\1/g, '$2');
+    t = t.replace(/~~(.*?)~~/g, '$1');
+    t = t.replace(/\|/g, ' ');
+  }
+
+  /* 2. Emoji & pictographs */
+  if (o.emoji){
+    t = t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2700}-\u{27BF}]/gu, ' ');
+  }
+
+  /* 3. Abbreviations */
+  if (o.abbr){
+    t = t.replace(ABBR_RE, (m, pre, ab) => pre + (ABBR[ab.toLowerCase()] || ab));
+  }
+
+  /* 4. Dotted acronyms: U.S.A. → U S A */
+  if (o.acr){
+    t = t.replace(/\b(?:[A-Za-z]\.){2,}/g, m => m.replace(/\./g,'').split('').join(' '));
+  }
+
+  /* 5. Currency */
+  t = t.replace(/([$£€¥])\s?(\d[\d,]*(?:\.\d+)?)/g, (m, sym, num) => {
+    const cur = sym === '$' ? 'dollar' : sym === '£' ? 'pound' : sym === '€' ? 'euro' : 'yen';
+    const clean = num.replace(/,/g,'');
+    const parts = clean.split('.');
+    if (parts[1] && parts[1].length === 2){
+      const whole = parseInt(parts[0],10) || 0;
+      return digitsToWords(parts[0]) + ' ' + cur + (whole === 1 ? '' : 's') +
+             ' and ' + digitsToWords(parts[1]) + ' cent' + (parts[1] === '01' ? '' : 's');
+    }
+    const v = parseFloat(clean);
+    return digitsToWords(clean) + ' ' + cur + (v === 1 ? '' : 's');
+  });
+  t = t.replace(/\b(\d[\d,]*(?:\.\d+)?)\s?(?:USD|EUR|GBP)\b/gi,
+    (m,n) => digitsToWords(n.replace(/,/g,'')) + ' dollars');
+
+  /* 6. Percent */
+  t = t.replace(/(\d[\d,]*(?:\.\d+)?)\s?%/g, (m,n) => digitsToWords(n.replace(/,/g,'')) + ' percent');
+
+  /* 7. Clock times */
+  t = t.replace(/\b(\d{1,2}):(\d{2})(?::\d{2})?\s*(a\.?m\.?|p\.?m\.?)?/gi, (m,h,mi,ap) => {
+    let out = digitsToWords(h);
+    if (mi === '00') out += " o'clock";
+    else out += ' ' + (mi[0] === '0' ? 'oh ' + ONES[+mi[1]] : digitsToWords(mi));
+    if (ap) out += ' ' + (ap.toLowerCase().charAt(0) === 'a' ? 'A M' : 'P M');
+    return out;
+  });
+
+  /* 8. Dates */
+  t = t.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m,y,mo,d) =>
+    (MONTHS[+mo] || mo) + ' ' + ordinalToWords(+d) + ', ' + yearToWords(+y));
+  t = t.replace(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g, (m,a,b,c) => {
+    let mo = +a, d = +b;
+    if (+a > 12 && +b <= 12){ mo = +b; d = +a; }
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return m;
+    const yw = c.length === 4 ? yearToWords(+c) : digitsToWords(c);
+    return MONTHS[mo] + ' ' + ordinalToWords(d) + ', ' + yw;
+  });
+
+  /* 9. Fractions */
+  t = t.replace(/\b(\d{1,3})\/(\d{1,3})\b/g, (m,a,b) =>
+    FRACTIONS[a + '/' + b] || (digitsToWords(a) + ' ' + ordinalToWords(+b) + 's'));
+
+  /* 10. Units & symbols */
+  if (o.unit){
+    for (const u of UNITS){
+      t = t.replace(u.re, (m,n) => {
+        const v = parseFloat(n.replace(/,/g,''));
+        return digitsToWords(n) + ' ' + (v === 1 ? u.s : u.p);
+      });
+    }
+    t = t.replace(/(\d[\d,]*(?:\.\d+)?)\s?°/g, (m,n) => digitsToWords(n) + ' degrees');
+    t = t.replace(/([A-Za-z])\s*\/\s*([A-Za-z])/g, '$1 or $2');
+    t = t.replace(/\s?&\s?/g, ' and ');
+    t = t.replace(/\s?@\s?/g, ' at ');
+    t = t.replace(/\s?\+\s?/g, ' plus ');
+    t = t.replace(/\s?=\s?/g, ' equals ');
+    t = t.replace(/%/g, ' percent ');
+  }
+
+  /* 11. Ordinals: 1st 2nd 21st */
+  t = t.replace(/\b(\d+)(st|nd|rd|th)\b/gi, (m,n) => ordinalToWords(+n));
+
+  /* 12. Standalone years 1900–2099 */
+  t = t.replace(/\b(19\d{2}|20\d{2})\b/g, (m,y) => yearToWords(+y));
+
+  /* 13. Remaining plain numbers */
+  if (o.num){
+    t = t.replace(/(^|[^\w.])(\d[\d,]*(?:\.\d+)?)(?![\w])/g, (m, pre, num) => pre + digitsToWords(num));
+  }
+
+  /* 14. Punctuation spacing */
+  if (o.punct){
+    t = t.replace(/[ \t]+/g, ' ');
+    t = t.replace(/\s+([,.;:!?])/g, '$1');
+    t = t.replace(/([,;:])(?=\S)/g, '$1 ');
+    t = t.replace(/([.!?])(?=[A-Za-z0-9])/g, '$1 ');
+    t = t.replace(/,(?:\s*,)+/g, ',');
+    t = t.replace(/\.{2,}/g, '. ');
+    t = t.replace(/\s*[—–]\s*/g, ', ');
+    t = t.replace(/\s*-\s*/g, ' ');
+    t = t.replace(/[()\[\]{}]/g, ' ');
+    t = t.replace(/[ \t]+/g, ' ');
+  }
+
+  /* 15. Comma smoothing for long sentences */
+  if (o.smooth){
+    const CONJ = /^(and|but|so|because|which|that|when|while|although|however|therefore|if|since|after|before|or|yet|unless)$/i;
+    t = t.replace(/[^.!?\n]+[.!?]*/g, seg => {
+      const words = seg.trim().split(/\s+/).filter(Boolean);
+      if (words.length < 16 || seg.indexOf(',') !== -1) return seg;
+      const out = []; let since = 0;
+      for (let i = 0; i < words.length; i++){
+        const w = words[i];
+        if (i > 5 && since >= 6 && CONJ.test(w.replace(/[^\w]/g,'')) && out.length){
+          const last = out[out.length-1];
+          if (!/[,]$/.test(last)) out[out.length-1] = last + ',';
+          since = 0;
+        }
+        out.push(w); since++;
+      }
+      return out.join(' ');
+    });
+  }
+
+  /* 16. Line handling + terminal punctuation */
+  t = t.split('\n').map(line => {
+    let l = line.replace(/\s+/g,' ').trim();
+    if (!l) return '';
+    l = l.replace(/["'”’)\]]+$/,'').trim();
+    l = l.replace(/[,;:\-]+$/,'');
+    if (!/[.!?]$/.test(l)) l += '.';
+    return l;
+  }).join('\n');
+
+  t = t.replace(/[ \t]+/g,' ');
+  t = t.replace(/\n{3,}/g,'\n\n');
+  t = t.replace(/ +\n/g,'\n');
+  return t.trim();
+}
+
+/* ============================================================
+   PART 3 — TEXT STATS
+   ============================================================ */
+function updateStats(){
+  const txt = $('cleanText').value;
+  const words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
+  const sentences = (txt.match(/[.!?]+/g) || []).length;
+  $('sChars').textContent = txt.length;
+  $('sWords').textContent = words;
+  $('sSent').textContent = sentences;
+  const secs = Math.round(words / 2.6); // ~155 wpm
+  $('sDur').textContent = Math.floor(secs/60) + ':' + String(secs%60).padStart(2,'0');
+  const pill = $('readyPill');
+  if (!txt.trim()){ pill.textContent = 'waiting'; pill.className = 'pill'; }
+  else if (txt.length > 3000){ pill.textContent = txt.length + ' chars — long'; pill.className = 'pill good'; }
+  else { pill.textContent = 'ready'; pill.className = 'pill good'; }
+}
+
+/* ============================================================
+   PART 4 — STATUS HELPERS
+   ============================================================ */
+function setStatus(msg, kind){
+  const el = $('status');
+  el.innerHTML = msg;
+  el.className = 'status show' + (kind ? ' ' + kind : '');
+}
+function clearStatus(){ $('status').className = 'status'; }
+function setProgress(p){
+  const bar = $('bar');
+  if (p === null){ bar.classList.remove('show'); return; }
+  bar.classList.add('show');
+  $('barFill').style.width = Math.round(p*100) + '%';
+}
+
+/* ============================================================
+   PART 5 — CLOUD ENGINE (free, no API key)
+   ============================================================ */
+const CLOUD_VOICES = [
+  ['Brian','British male'], ['Amy','British female'], ['Emma','British female'],
+  ['Arthur','British male'], ['Olivia','Australian female'], ['Russell','Australian male'],
+  ['Nicole','Australian female'], ['Joanna','US female'], ['Matthew','US male'],
+  ['Joey','US male'], ['Kendra','US female'], ['Kimberly','US female'],
+  ['Salli','US female'], ['Ivy','US child female'], ['Justin','US child male'],
+  ['Aria','New Zealand female'], ['Raveena','Indian English female'],
+  ['Aditi','Hindi female'], ['Celine','French female'], ['Mathieu','French male'],
+  ['Chantal','Canadian French female'], ['Marlene','German female'], ['Hans','German male'],
+  ['Vicki','German female'], ['Conchita','Spanish female'], ['Lucia','Spanish female'],
+  ['Enrique','Spanish male'], ['Mia','Mexican Spanish female'], ['Carla','Italian female'],
+  ['Giorgio','Italian male'], ['Vitoria','Brazilian female'], ['Ricardo','Brazilian male'],
+  ['Maja','Polish female'], ['Jacek','Polish male'], ['Jan','Polish male'],
+  ['Tatyana','Russian female'], ['Maxim','Russian male'], ['Astrid','Swedish female'],
+  ['Liv','Norwegian female'], ['Naja','Danish female'], ['Mads','Danish male'],
+  ['Lotte','Dutch female'], ['Ruben','Dutch male'], ['Filiz','Turkish female'],
+  ['Zeina','Arabic female'], ['Dora','Icelandic female'], ['Karl','Icelandic male'],
+  ['Seoyeon','Korean female']
+];
+
+function chunkText(text, max){
+  const clean = text.replace(/\n+/g, ' ').trim();
+  const sentences = clean.match(/[^.!?]+[.!?]*\s*/g) || [clean];
+  const out = [];
+  let cur = '';
+  for (const s of sentences){
+    if ((cur + s).length > max && cur){ out.push(cur.trim()); cur = ''; }
+    if (s.length > max){
+      let rest = s;
+      while (rest.length > max){
+        let cut = rest.lastIndexOf(' ', max);
+        if (cut < max * 0.5) cut = max;
+        out.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut);
+      }
+      cur = rest;
+    } else {
+      cur += s;
+    }
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out.filter(Boolean);
+}
+
+async function synthCloud(text, voice, onProgress){
+  const chunks = chunkText(text, 800);
+  const blobs = [];
+  for (let i = 0; i < chunks.length; i++){
+    onProgress(i / chunks.length);
+    const url = 'https://api.streamelements.com/kappa/v2/speech?voice=' +
+                encodeURIComponent(voice) + '&text=' + encodeURIComponent(chunks[i]);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('TTS service returned HTTP ' + res.status);
+    const blob = await res.blob();
+    if (!blob.size) throw new Error('The TTS service returned empty audio.');
+    blobs.push(blob);
+  }
+  onProgress(1);
+  return new Blob(blobs, { type: 'audio/mpeg' });
+}
+
+/* ============================================================
+   PART 6 — BROWSER ENGINE
+   ============================================================ */
+let browserVoices = [];
+function loadBrowserVoices(){
+  if (!('speechSynthesis' in window)) return;
+  browserVoices = window.speechSynthesis.getVoices();
+  const sel = $('browserVoice');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  if (!browserVoices.length){
+    sel.innerHTML = '<option value="">(none found yet)</option>';
+    return;
+  }
+  browserVoices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = v.name + ' — ' + v.lang + (v.default ? ' ★' : '');
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
+}
+if ('speechSynthesis' in window){
+  loadBrowserVoices();
+  window.speechSynthesis.onvoiceschanged = loadBrowserVoices;
+}
+
+let utter = null;
+function browserPlay(text){
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const idx = $('browserVoice').value;
+  const v = browserVoices[+idx];
+  utter = new SpeechSynthesisUtterance(text);
+  if (v) { utter.voice = v; utter.lang = v.lang; }
+  utter.rate = parseFloat($('rate').value);
+  utter.pitch = parseFloat($('pitch').value);
+  utter.volume = parseFloat($('vol').value);
+  utter.onend = () => { setStatus('Playback finished.', 'ok'); };
+  utter.onerror = e => { if (e.error !== 'interrupted') setStatus('Speech error: ' + e.error, 'err'); };
+  synth.speak(utter);
+}
+
+/* ============================================================
+   PART 7 — UI WIRING
+   ============================================================ */
+// Populate cloud voice list
+(function(){
+  const sel = $('cloudVoice');
+  CLOUD_VOICES.forEach(([name, desc]) => {
+    const o = document.createElement('option');
+    o.value = name;
+    o.textContent = name + ' — ' + desc;
+    sel.appendChild(o);
+  });
+  sel.value = 'Brian';
+})();
+
+// Engine switching
+function syncEngine(){
+  const cloud = $('engine').value === 'cloud';
+  $('cloudVoiceWrap').classList.toggle('hidden', !cloud);
+  $('browserVoiceWrap').classList.toggle('hidden', cloud);
+  $('browserTuning').style.display = cloud ? 'none' : 'grid';
+  $('recBtn').classList.toggle('hidden', cloud);
+  $('engineHint').innerHTML = cloud
+    ? 'Cloud mode fetches real MP3 audio from a free public TTS service, so the <b>Download MP3</b> button gives you a proper audio file. Keep each generation under ~3000 characters for best reliability.'
+    : 'Browser mode speaks instantly using voices built into your device. It is 100% offline, but browsers do not let a page capture their own speech to a file — so <b>Download</b> saves the cleaned script instead. On desktop Chrome you can also use <b>Record to file</b>.';
+  resetAudioUI();
+}
+$('engine').addEventListener('change', syncEngine);
+
+// Sliders
+['rate','pitch','vol'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    const lbl = { rate:'vRate', pitch:'vPitch', vol:'vVol' }[id];
+    $(lbl).textContent = parseFloat($(id).value).toFixed(2);
+  });
+});
+
+// Clean button
+$('cleanBtn').addEventListener('click', () => {
+  const raw = $('rawText').value;
+  if (!raw.trim()){ setStatus('Nothing to clean — paste some text first.', 'warn'); return; }
+  const opts = {
+    md: $('oMd').checked, abbr: $('oAbbr').checked, num: $('oNum').checked,
+    unit: $('oUnit').checked, punct: $('oPunct').checked, smooth: $('oSmooth').checked,
+    acr: $('oAcr').checked, emoji: $('oEmoji').checked
+  };
+  const out = cleanForTTS(raw, opts);
+  $('cleanText').value = out;
+  updateStats();
+  setStatus('Text cleaned and formatted. Review it, edit if you like, then generate speech below.', 'ok');
+  resetAudioUI();
+});
+
+// Live stats
+$('cleanText').addEventListener('input', () => { updateStats(); resetAudioUI(); });
+
+// Sample / clear / file
+$('sampleBtn').addEventListener('click', () => {
+  $('rawText').value =
+`# Quarterly Update 🚀
+
+Dr. Smith bought 3.5 kg of apples for $12.99 on 12/25/2024 — approx. 45% cheaper than Mr. Jones' store (U.S.A. prices, 10-20% tax).
+
+**Key metrics:** revenue hit $1,250,000 in Q3 vs. $980,000 last year, i.e. a 27.5% increase. We shipped 1,200 units @ $42.50 each.
+
+The meeting is at 3:30 p.m. on Jan. 5th, 2026. Please bring 2-3 pages of notes, e.g. your roadmap, etc.
+
+> "Speed matters," said the CEO. "We have 12 months, not 24."`;
+  setStatus('Sample loaded. Hit "Clean & format for TTS".', '');
+});
+
+$('clearBtn').addEventListener('click', () => {
+  $('rawText').value = ''; $('cleanText').value = '';
+  updateStats(); clearStatus(); resetAudioUI();
+});
+
+$('loadFile').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    $('rawText').value = r.result;
+    $('fname').value = f.name.replace(/\.[^.]+$/,'') || 'speech';
+    setStatus('Loaded <b>' + f.name + '</b> (' + r.result.length + ' characters). Now clean it.', 'ok');
+  };
+  r.onerror = () => setStatus('Could not read that file.', 'err');
+  r.readAsText(f);
+  e.target.value = '';
+});
+
+// Copy / download txt
+$('copyBtn').addEventListener('click', async () => {
+  const txt = $('cleanText').value;
+  if (!txt.trim()){ setStatus('Nothing to copy.', 'warn'); return; }
+  try {
+    await navigator.clipboard.writeText(txt);
+    setStatus('Cleaned text copied to clipboard.', 'ok');
+  } catch {
+    $('cleanText').select(); document.execCommand('copy');
+    setStatus('Cleaned text copied.', 'ok');
+  }
+});
+
+$('downloadTxt').addEventListener('click', () => {
+  const txt = $('cleanText').value;
+  if (!txt.trim()){ setStatus('Nothing to save.', 'warn'); return; }
+  saveBlob(new Blob([txt], { type:'text/plain;charset=utf-8' }), ($('fname').value || 'speech') + '.txt');
+});
+
+function saveBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+/* ---------- Audio UI ---------- */
+let currentBlob = null;
+let currentUrl = null;
+
+function resetAudioUI(){
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  currentBlob = null;
+  if (currentUrl){ URL.revokeObjectURL(currentUrl); currentUrl = null; }
+  const p = $('player');
+  p.pause(); p.removeAttribute('src'); p.load();
+  p.classList.remove('show');
+  ['dlBtn','playBtn','pauseBtn','stopBtn'].forEach(id => $(id).classList.add('hidden'));
+  setProgress(null);
+}
+function showAudioBlob(blob){
+  currentBlob = blob;
+  if (currentUrl) URL.revokeObjectURL(currentUrl);
+  currentUrl = URL.createObjectURL(blob);
+  const p = $('player');
+  p.src = currentUrl;
+  p.classList.add('show');
+  $('dlBtn').classList.remove('hidden');
+}
+
+/* ---------- Generate ---------- */
+$('genBtn').addEventListener('click', async () => {
+  const text = $('cleanText').value.trim();
+  if (!text){
+    setStatus('No cleaned text yet. Paste text in step 1 and click <b>Clean &amp; format for TTS</b>.', 'warn');
+    return;
+  }
+
+  const engine = $('engine').value;
+  $('genBtn').disabled = true;
+  resetAudioUI();
+
+  if (engine === 'browser'){
+    if (!('speechSynthesis' in window)){
+      setStatus('Your browser does not support the Web Speech API. Switch to Cloud MP3.', 'err');
+      $('genBtn').disabled = false; return;
+    }
+    browserPlay(text);
+    ['pauseBtn','stopBtn'].forEach(id => $(id).classList.remove('hidden'));
+    setStatus('Speaking with the browser voice. Use Pause / Stop below, or <b>Record to file</b> to capture it as audio.', 'ok');
+    $('genBtn').disabled = false;
+    return;
+  }
+
+  /* Cloud */
+  const voice = $('cloudVoice').value || 'Brian';
+  setStatus('Contacting the TTS service…', '');
+  setProgress(0);
+  try {
+    const blob = await synthCloud(text, voice, setProgress);
+    showAudioBlob(blob);
+    const kb = Math.round(blob.size / 1024);
+    setStatus('✅ Audio ready — ' + kb + ' KB, voice <b>' + voice + '</b>. Press play to preview, or download below.', 'ok');
+    setProgress(null);
+  } catch (err){
+    setProgress(null);
+    setStatus(
+      '❌ Cloud generation failed: <b>' + err.message + '</b><br><br>' +
+      'This usually means the free endpoint is rate-limited, offline, or blocked on your network. ' +
+      'Try again in a moment, shorten the text, or switch <b>Engine</b> to <b>Browser voice</b>.',
+      'err'
+    );
+  } finally {
+    $('genBtn').disabled = false;
+  }
+});
+
+/* ---------- Playback controls (cloud) ---------- */
+$('playBtn').addEventListener('click', () => $('player').play());
+$('pauseBtn').addEventListener('click', () => {
+  if ($('engine').value === 'browser') window.speechSynthesis.pause();
+  else $('player').pause();
+});
+$('stopBtn').addEventListener('click', () => {
+  if ($('engine').value === 'browser'){ window.speechSynthesis.cancel(); setStatus('Stopped.', ''); }
+  else { $('player').pause(); $('player').currentTime = 0; }
+});
+
+/* ---------- Download audio ---------- */
+$('dlBtn').addEventListener('click', () => {
+  if (!currentBlob){ setStatus('Generate audio first.', 'warn'); return; }
+  const name = ($('fname').value || 'speech').replace(/[^\w\-]+/g,'_');
+  saveBlob(currentBlob, name + '.mp3');
+  setStatus('Downloading <b>' + name + '.mp3</b>.', 'ok');
+});
+
+/* ---------- Record browser speech to a file (Chrome desktop) ---------- */
+$('recBtn').addEventListener('click', async () => {
+  const text = $('cleanText').value.trim();
+  if (!text){ setStatus('Nothing to record.', 'warn'); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+    setStatus('Tab recording is not supported in this browser. Use Cloud MP3 mode instead.', 'err');
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
+  } catch {
+    setStatus('Screen-share was cancelled.', 'warn');
+    return;
+  }
+  const audioTracks = stream.getAudioTracks();
+  if (!audioTracks.length){
+    stream.getTracks().forEach(t => t.stop());
+    setStatus('No audio was shared. When the picker opens, choose <b>This Tab</b> and tick <b>Share tab audio</b>.', 'err');
+    return;
+  }
+  const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus']
+    .find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  const rec = new MediaRecorder(new MediaStream(audioTracks), mime ? { mimeType: mime } : undefined);
+  const parts = [];
+  rec.ondataavailable = e => { if (e.data.size) parts.push(e.data); };
+  rec.onstop = () => {
+    stream.getTracks().forEach(t => t.stop());
+    const type = mime || 'audio/webm';
+    const blob = new Blob(parts, { type });
+    showAudioBlob(blob);
+    const ext = type.includes('ogg') ? 'ogg' : 'webm';
+    const name = ($('fname').value || 'speech').replace(/[^\w\-]+/g,'_');
+    saveBlob(blob, name + '.' + ext);
+    setStatus('Recording stopped and saved as <b>' + name + '.' + ext + '</b>.', 'ok');
+  };
+  rec.start();
+  browserPlay(text);
+  setStatus('🔴 Recording… Keep this tab visible and unmuted. Recording stops automatically when speech finishes.', 'warn');
+  const check = setInterval(() => {
+    if (!window.speechSynthesis.speaking){
+      clearInterval(check);
+      setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 700);
+    }
+  }, 300);
+});
+
+/* ---------- Boot ---------- */
+syncEngine();
+updateStats();
+</script>
+</body>
+</html>
